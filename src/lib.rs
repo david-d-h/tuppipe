@@ -1,5 +1,3 @@
-pub use paste;
-
 pub struct PartialPipe<T>(T);
 
 /// The [`pipe`] function makes a partial pipe by wrapping a generic `T` in a [`PartialPipe`].
@@ -46,12 +44,11 @@ impl<F: FnOnce(T) -> R, T, R> Pipe<T> for F {
     }
 }
 
-#[macro_export]
 macro_rules! generate_pipe_ntup_impl {
     (
         $(($pF:ident -> $($pN:ident),+ -> $pL:ident)),* $(,)?
-    ) => ($crate::paste::paste! {
-        $($crate::generate_pipe_ntup_impl!(@gen_item
+    ) => (::paste::paste! {
+        $(generate_pipe_ntup_impl!(@gen_item
                 [impl<T, $pF, $($pN),+, $pL, [<R $pF>], $([<R $pN>]),+, [<R $pL>]> $crate::Pipe<T> for ($pF, $($pN),+, $pL)]
                 [$pF: $crate::Pipe<T, Output = [<R $pF>]>,]
                 ($pF, $($pN),+, $pL)
@@ -69,8 +66,8 @@ macro_rules! generate_pipe_ntup_impl {
                 }]
         );)*
     });
-    (@gen_item [$($pre_clause:tt)+] [$($buffer:tt)+] ($pL:ident, $pC:ident $(, $pN:ident)*) [$($post_clause:tt)+]) => ($crate::paste::paste! {
-        $crate::generate_pipe_ntup_impl!(@gen_item
+    (@gen_item [$($pre_clause:tt)+] [$($buffer:tt)+] ($pL:ident, $pC:ident $(, $pN:ident)*) [$($post_clause:tt)+]) => (::paste::paste! {
+        generate_pipe_ntup_impl!(@gen_item
             [$($pre_clause)+]
             [$($buffer)+ $pC: $crate::Pipe<[<R $pL>], Output = [<R $pC>]>,]
             ($pC $(, $pN)*)
