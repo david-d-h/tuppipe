@@ -1,7 +1,14 @@
 [package]
 name = "pipe-tuple"
 version = "0.1.0"
+authors = ["David d.H."]
 edition = "2021"
+description = "A simple pipe operator-like implementation using tuples in Rust."
+documentation = "https://docs.rs/pipe-tuple"
+homepage = "https://github.com/david-d-h/pipe-tuple"
+repository = "https://github.com/david-d-h/pipe-tuple"
+license = "MIT"
+keywords = ["pipe-operator", "pipe", "pipeop", "pipe-op"]
 
 [dependencies]
 paste = "1.0"
