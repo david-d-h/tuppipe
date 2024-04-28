@@ -12,3 +12,7 @@ keywords = ["pipe-operator", "pipe", "pipeop", "pipe-op"]
 
 [dependencies]
 paste = "1.0"
+
+[features]
+default = ["fn-pipes"]
+fn-pipes = []

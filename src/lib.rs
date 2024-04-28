@@ -65,6 +65,7 @@ where
     }
 }
 
+#[cfg(feature = "fn-pipes")]
 impl<F: FnOnce(T) -> R, T, R> Pipe<T> for F {
     type Output = R;
 
