@@ -1,3 +1,11 @@
+/// This [`PartialPipe`] struct is a necessary wrapper around a generic `T`, to implement
+/// a foreign trait (the pipe operator of choice, `Shr`) for any arbitrary type.
+///
+/// ### Example
+///
+/// ```rs
+/// assert_eq!(1, pipe(0) >> |x| x + 1);
+/// ```
 pub struct PartialPipe<T>(T);
 
 /// The [`pipe`] function makes a partial pipe by wrapping a generic `T` in a [`PartialPipe`].
@@ -126,7 +134,7 @@ mod tests {
 
     #[test]
     fn a_closure_works_as_a_pipe() {
-        assert_eq!(2, pipe(0) >> (|x| x + 1, |x| x + 1));
+        assert_eq!(1, pipe(0) >> |x| x + 1);
     }
 
     #[test]
