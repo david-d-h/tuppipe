@@ -180,6 +180,20 @@ mod tests {
             }
         }
 
-        assert_eq!(-2, pipe(0) >> Subtractor::<2>)
+        assert_eq!(-2, pipe(0) >> Subtractor::<2>);
+    }
+
+    #[test]
+    fn desugared_method() {
+        #[derive(PartialEq)]
+        struct Int32(i32);
+
+        impl Int32 {
+            pub fn add_one(self) -> Self {
+                Self(self.0 + 1)
+            }
+        }
+
+        assert_eq!(1i32, pipe(Int32(0)) >> (Int32::add_one, |Int32(n)| n));
     }
 }
