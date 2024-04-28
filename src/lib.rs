@@ -1,3 +1,5 @@
+#![doc = include_str!("../README.md")]
+
 /// This [`PartialPipe`] struct is a necessary wrapper around a generic `T`, to implement
 /// a foreign trait (the pipe operator of choice, `Shr`) for any arbitrary type.
 ///
