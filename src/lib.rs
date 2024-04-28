@@ -3,7 +3,9 @@
 ///
 /// ### Example
 ///
-/// ```rs
+/// ```rust
+/// use tuppipe::pipe;
+///
 /// assert_eq!(1, pipe(0) >> |x| x + 1);
 /// ```
 pub struct PartialPipe<T>(T);
@@ -12,7 +14,9 @@ pub struct PartialPipe<T>(T);
 ///
 /// ### Example
 ///
-/// ```rs
+/// ```rust
+/// use tuppipe::pipe;
+///
 /// const fn add_one(to: i32) -> i32 {
 ///     to + 1
 /// }
@@ -33,7 +37,9 @@ pub const fn pipe<T>(inner: T) -> PartialPipe<T> {
 /// The [`Pipe`] trait is public, meaning you can totally implement
 /// your own pipes. Here is an example of how.
 ///
-/// ```rs
+/// ```rust
+/// use tuppipe::*;
+///
 /// struct Subtractor<const N: i32>;
 ///
 /// impl<const N: i32> Pipe<i32> for Subtractor<N> {
