@@ -196,7 +196,7 @@ mod tests {
         struct Int32(i32);
 
         impl Int32 {
-            pub fn add_one(self) -> Self {
+            fn add_one(self) -> Self {
                 Self(self.0 + 1)
             }
         }
