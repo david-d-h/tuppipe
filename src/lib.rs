@@ -118,12 +118,12 @@ macro_rules! generate_pipe_ntup_impl {
     };
 }
 
-impl<T, P1, P2, PR1, PR2> Pipe<T> for (P1, P2)
+impl<T, P1, P2, RP1, RP2> Pipe<T> for (P1, P2)
 where
-    P1: Pipe<T, Output = PR1>,
-    P2: Pipe<PR1, Output = PR2>,
+    P1: Pipe<T, Output = RP1>,
+    P2: Pipe<RP1, Output = RP2>,
 {
-    type Output = PR2;
+    type Output = RP2;
 
     #[inline]
     fn complete(self, value: T) -> Self::Output {
@@ -191,7 +191,6 @@ mod tests {
 
     #[test]
     fn desugared_method() {
-        #[derive(PartialEq)]
         struct Int32(i32);
 
         impl Int32 {
