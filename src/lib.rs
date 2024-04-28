@@ -24,6 +24,35 @@ pub const fn pipe<T>(inner: T) -> PartialPipe<T> {
     PartialPipe(inner)
 }
 
+/// The [`Pipe`] trait has to be implemented by, well... pipes.
+/// Anything that implements this is usable as a pipe where the
+/// item in the pipeline (at said pipe's position) is of type `T`.
+///
+/// ### Implementing your own pipe
+///
+/// The [`Pipe`] trait is public, meaning you can totally implement
+/// your own pipes. Here is an example of how.
+///
+/// ```rs
+/// struct Subtractor<const N: i32>;
+///
+/// impl<const N: i32> Pipe<i32> for Subtractor<N> {
+///     type Output = i32;
+///
+///     fn complete(self, value: i32) -> Self::Output {
+///         value - N
+///     }
+/// }
+///
+/// assert_eq!(-2, pipe(0) >> Subtractor::<2>)
+/// ```
+pub trait Pipe<T> {
+    type Output;
+
+    /// Complete a given pipe.
+    fn complete(self, value: T) -> Self::Output;
+}
+
 impl<P, T, R> std::ops::Shr<P> for PartialPipe<T>
 where
     P: Pipe<T, Output = R>,
@@ -34,13 +63,6 @@ where
     fn shr(self, pipe: P) -> Self::Output {
         pipe.complete(self.0)
     }
-}
-
-pub trait Pipe<T> {
-    type Output;
-
-    /// Complete a given pipe.
-    fn complete(self, value: T) -> Self::Output;
 }
 
 impl<F: FnOnce(T) -> R, T, R> Pipe<T> for F {
@@ -143,5 +165,20 @@ mod tests {
             6,
             pipe(0) >> (add_one, add_one, (add_one, add_one, (add_one, add_one)))
         );
+    }
+
+    #[test]
+    fn custom_pipe_implementation() {
+        struct Subtractor<const N: i32>;
+
+        impl<const N: i32> Pipe<i32> for Subtractor<N> {
+            type Output = i32;
+
+            fn complete(self, value: i32) -> Self::Output {
+                value - N
+            }
+        }
+
+        assert_eq!(-2, pipe(0) >> Subtractor::<2>)
     }
 }
