@@ -1,5 +1,7 @@
 #![doc = include_str!("../README.md")]
 
+pub mod prelude;
+
 pub mod also;
 
 /// This [`PartialPipe`] struct is a necessary wrapper around a generic `T`, to implement
