@@ -19,9 +19,9 @@ const fn add_one(to: i32) -> i32 {
 assert_eq!(2, pipe(0) >> (add_one, add_one));
 ```
 
-The first element in the tuple after `>>`, also known as the pipeline, will receive the `0i32`
-that you see in the `pipe` invocation. The second element in the pipeline will receive the
-output from the first element in the pipeline, and so on.
+The first element in the tuple (the tuple being the pipeline) after `>>`, will receive the `0i32`
+that you see in the `pipe` invocation. The second element in the pipeline will receive the output
+from the first element in the pipeline, and so on.
 
 ### Default implementations of [`Pipe`][trait.Pipe]
 
