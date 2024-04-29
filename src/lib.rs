@@ -16,9 +16,33 @@ pub mod also;
 /// ```
 pub struct PartialPipeline<T>(T);
 
+/// The [`PartialIgnoredPipeline`] struct is essentially the same as the [`PartialPipeline`]
+/// struct, however with this struct the result of your pipeline will be ignored, and you will
+/// instead receive the unit type `()` as a result.
+///
+/// This is meant to fix the problem where: in pipelines of which you don't care about the result
+/// the compiler will complain about you not using the returned value. This happens because the
+/// [`Shr`] trait this crate uses on the `PartialPipeline` types has the `#[must_use]` attribute
+/// on the method we *actually implement*.
+///
+/// You could just do `let _ = pipeline`, but nobody wants that.
+///
+/// ### Example
+///
+/// ```rust
+/// use tuppipe::{ignore, pipe};
+///
+/// ignore(0) >> |x| x + 1;
+///
+/// // instead of
+///
+/// let _ = pipe(0) >> |x| x + 1;
+/// ```
+///
+/// [`Shr`]: std::ops::Shr
 pub struct PartialIgnoredPipeline<T>(T);
 
-/// The [`pipe`] function makes a partial pipe by wrapping a generic `T` in a [`PartialPipeline`].
+/// The [`pipe`] function makes a partial pipeline by wrapping a generic `T` in a [`PartialPipeline`].
 ///
 /// ### Example
 ///
@@ -36,12 +60,18 @@ pub const fn pipe<T>(inner: T) -> PartialPipeline<T> {
     PartialPipeline(inner)
 }
 
+/// The [`ignore`] function makes a partial **ignored** pipeline. This means that no matter
+/// the result of your pipeline, the result of it will be ignored, and you will receive the
+/// unit type `()` instead.
+///
+/// See also: [`PartialIgnoredPipeline`]
 #[inline]
 pub const fn ignore<T>(inner: T) -> PartialIgnoredPipeline<T> {
     PartialIgnoredPipeline(inner)
 }
 
 impl<T> PartialPipeline<T> {
+    /// Transform a regular [`PartialPipeline`] into a [`PartialIgnoredPipeline`].
     #[inline]
     pub fn ignore(self) -> PartialIgnoredPipeline<T> {
         PartialIgnoredPipeline(self.0)
