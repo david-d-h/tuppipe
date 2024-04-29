@@ -4,7 +4,7 @@ pub mod prelude;
 
 pub mod also;
 
-/// This [`PartialPipe`] struct is a necessary wrapper around a generic `T`, to implement
+/// This [`PartialPipeline`] struct is a necessary wrapper around a generic `T`, to implement
 /// a foreign trait (the pipe operator of choice, `Shr`) for any arbitrary type.
 ///
 /// ### Example
@@ -14,9 +14,11 @@ pub mod also;
 ///
 /// assert_eq!(1, pipe(0) >> |x| x + 1);
 /// ```
-pub struct PartialPipe<T>(T);
+pub struct PartialPipeline<T>(T);
 
-/// The [`pipe`] function makes a partial pipe by wrapping a generic `T` in a [`PartialPipe`].
+pub struct PartialIgnoredPipeline<T>(T);
+
+/// The [`pipe`] function makes a partial pipe by wrapping a generic `T` in a [`PartialPipeline`].
 ///
 /// ### Example
 ///
@@ -30,8 +32,20 @@ pub struct PartialPipe<T>(T);
 /// assert_eq!(3, pipe(1) >> (add_one, add_one));
 /// ```
 #[inline]
-pub const fn pipe<T>(inner: T) -> PartialPipe<T> {
-    PartialPipe(inner)
+pub const fn pipe<T>(inner: T) -> PartialPipeline<T> {
+    PartialPipeline(inner)
+}
+
+#[inline]
+pub const fn ignore<T>(inner: T) -> PartialIgnoredPipeline<T> {
+    PartialIgnoredPipeline(inner)
+}
+
+impl<T> PartialPipeline<T> {
+    #[inline]
+    pub fn ignore(self) -> PartialIgnoredPipeline<T> {
+        PartialIgnoredPipeline(self.0)
+    }
 }
 
 /// The [`Pipe`] trait has to be implemented by, well... pipes.
@@ -65,7 +79,7 @@ pub trait Pipe<T> {
     fn complete(self, value: T) -> Self::Output;
 }
 
-impl<P, T, R> std::ops::Shr<P> for PartialPipe<T>
+impl<P, T, R> std::ops::Shr<P> for PartialPipeline<T>
 where
     P: Pipe<T, Output = R>,
 {
@@ -74,6 +88,18 @@ where
     #[inline]
     fn shr(self, pipe: P) -> Self::Output {
         pipe.complete(self.0)
+    }
+}
+
+impl<P, T, R> std::ops::Shr<P> for PartialIgnoredPipeline<T>
+where
+    P: Pipe<T, Output = R>,
+{
+    type Output = ();
+
+    #[inline]
+    fn shr(self, pipe: P) -> Self::Output {
+        pipe.complete(self.0);
     }
 }
 
@@ -206,5 +232,10 @@ mod tests {
         }
 
         assert_eq!(1i32, pipe(Int32(0)) >> (Int32::add_one, |Int32(n)| n));
+    }
+
+    #[test]
+    fn ignore_pipeline_result() {
+        assert_eq!((), pipe(0).ignore() >> |x| x + 1);
     }
 }
