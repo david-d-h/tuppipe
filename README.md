@@ -5,7 +5,7 @@ to use them as pipes in a pipeline.
 
 ### Usage
 
-In the example below the [`pipe`][fn.pipe] function generates a [`PartialPipe`][struct.PartialPipe]
+In the example below the [`pipe`][fn.pipe] function generates a [`PartialPipeline`][struct.PartialPipeline]
 which can be used to "complete" (invoke) *any* type that implements [`Pipe`][trait.Pipe] using the
 shift right (`>>`) operator.
 
@@ -36,6 +36,6 @@ pretty much infinitely nest tuples in one another.
 
 You can check out the [docs](https://docs.rs/tuppipe) for more documentation and examples.
 
-[struct.PartialPipe]: https://docs.rs/tuppipe/latest/tuppipe/struct.PartialPipe.html
+[struct.PartialPipeline]: https://docs.rs/tuppipe/latest/tuppipe/struct.PartialPipe.html
 [trait.Pipe]: https://docs.rs/tuppipe/latest/tuppipe/trait.Pipe.html
 [fn.pipe]: https://docs.rs/tuppipe/latest/tuppipe/fn.pipe.html
