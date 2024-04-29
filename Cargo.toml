@@ -1,6 +1,6 @@
 [package]
 name = "tuppipe"
-version = "0.1.2"
+version = "0.1.3"
 authors = ["David d.H."]
 edition = "2021"
 description = "A simple pipe operator-like implementation using tuples in Rust."
