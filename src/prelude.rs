@@ -1,2 +1,4 @@
 pub use crate::also::{also, also_mut};
-pub use crate::{ignore, pipe};
+pub use crate::on::on;
+pub use crate::take_if::take_if;
+pub use crate::{ignore, pipe, Pipe};
