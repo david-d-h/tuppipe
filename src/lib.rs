@@ -8,7 +8,6 @@
     auto_traits,
     negative_impls
 )]
-#![allow(internal_features, incomplete_features)]
 
 pub mod prelude;
 
@@ -29,7 +28,7 @@ pub use paste::paste;
 ///
 /// assert_eq!(1, pipe(0) >> |x| x + 1);
 /// ```
-pub struct PartialPipeline<T>(T);
+pub struct PartialPipeline<'r, 'env, T>(T, std::marker::PhantomData<&'r &'env ()>);
 
 /// The [`PartialIgnoredPipeline`] struct is essentially the same as the [`PartialPipeline`]
 /// struct, however with this struct the result of your pipeline will be ignored, and you will
@@ -55,7 +54,7 @@ pub struct PartialPipeline<T>(T);
 /// ```
 ///
 /// [`Shr`]: std::ops::Shr
-pub struct PartialIgnoredPipeline<T>(T);
+pub struct PartialIgnoredPipeline<'r, 'env, T>(T, std::marker::PhantomData<&'r &'env ()>);
 
 /// The [`pipe`] function makes a partial pipeline by wrapping a generic `T` in a [`PartialPipeline`].
 ///
@@ -71,8 +70,8 @@ pub struct PartialIgnoredPipeline<T>(T);
 /// assert_eq!(3, pipe(1) >> (add_one, add_one));
 /// ```
 #[inline]
-pub const fn pipe<T>(inner: T) -> PartialPipeline<T> {
-    PartialPipeline(inner)
+pub fn pipe<'r, 'env, T>(inner: T) -> PartialPipeline<'r, 'env, T> {
+    PartialPipeline(inner, std::marker::PhantomData)
 }
 
 /// The [`ignore`] function makes a partial **ignored** pipeline. This means that no matter
@@ -81,15 +80,15 @@ pub const fn pipe<T>(inner: T) -> PartialPipeline<T> {
 ///
 /// See also: [`PartialIgnoredPipeline`]
 #[inline]
-pub const fn ignore<T>(inner: T) -> PartialIgnoredPipeline<T> {
-    PartialIgnoredPipeline(inner)
+pub fn ignore<'r, 'env, T>(inner: T) -> PartialIgnoredPipeline<'r, 'env, T> {
+    PartialIgnoredPipeline(inner, std::marker::PhantomData)
 }
 
-impl<T> PartialPipeline<T> {
+impl<'r, 'env, T> PartialPipeline<'r, 'env, T> {
     /// Transform a regular [`PartialPipeline`] into a [`PartialIgnoredPipeline`].
     #[inline]
-    pub fn ignore(self) -> PartialIgnoredPipeline<T> {
-        PartialIgnoredPipeline(self.0)
+    pub fn ignore(self) -> PartialIgnoredPipeline<'r, 'env, T> {
+        PartialIgnoredPipeline(self.0, self.1)
     }
 }
 
@@ -107,7 +106,7 @@ impl<T> PartialPipeline<T> {
 ///
 /// struct Subtractor<const N: i32>;
 ///
-/// impl<const N: i32> Pipe<i32> for Subtractor<N> {
+/// impl<const N: i32> Pipe<'_, '_, i32> for Subtractor<N> {
 ///     type Output = i32;
 ///
 ///     fn complete(self, value: i32) -> Self::Output {
@@ -117,16 +116,16 @@ impl<T> PartialPipeline<T> {
 ///
 /// assert_eq!(-2, pipe(0) >> Subtractor::<2>)
 /// ```
-pub trait Pipe<T> {
+pub trait Pipe<'r, 'env, T, _Bound = &'r &'env ()> {
     type Output;
 
     /// Complete a given pipe.
     fn complete(self, value: T) -> Self::Output;
 }
 
-impl<P, T, R> std::ops::Shr<P> for PartialPipeline<T>
+impl<'r, 'env, P, T, R> std::ops::Shr<P> for PartialPipeline<'r, 'env, T>
 where
-    P: Pipe<T, Output = R>,
+    P: Pipe<'r, 'env, T, Output = R>,
 {
     type Output = R;
 
@@ -136,9 +135,9 @@ where
     }
 }
 
-impl<P, T, R> std::ops::Shr<P> for PartialIgnoredPipeline<T>
+impl<'r, 'env, P, T, R> std::ops::Shr<P> for PartialIgnoredPipeline<'r, 'env, T>
 where
-    P: Pipe<T, Output = R>,
+    P: Pipe<'r, 'env, T, Output = R>,
 {
     type Output = ();
 
@@ -149,17 +148,17 @@ where
 }
 
 #[cfg(feature = "fn-pipes")]
-pub(crate) auto trait MarkerFnPipe {}
+pub auto trait MarkerFnPipe {}
 
 #[cfg(feature = "fn-pipes")]
-impl<F: FnOnce(T) -> R, T, R> Pipe<T> for F
+impl<'r, 'env, F: FnOnce(T) -> R, T, R> Pipe<'r, 'env, T> for F
 where
     F: MarkerFnPipe,
 {
     type Output = R;
 
     #[inline]
-    fn complete(self, value: T) -> <Self as Pipe<T>>::Output {
+    fn complete(self, value: T) -> Self::Output {
         self(value)
     }
 }
@@ -169,8 +168,8 @@ macro_rules! generate_pipe_ntup_impl {
         $(($pF:ident -> $($pN:ident),+ -> $pL:ident)),* $(,)?
     ) => (::paste::paste! {
         $(generate_pipe_ntup_impl!(@gen_item
-                [impl<T, $pF, $($pN),+, $pL, [<R $pF>], $([<R $pN>]),+, [<R $pL>]> $crate::Pipe<T> for ($pF, $($pN),+, $pL)]
-                [$pF: $crate::Pipe<T, Output = [<R $pF>]>,]
+                [impl<'r, 'env, T, $pF, $($pN),+, $pL, [<R $pF>], $([<R $pN>]),+, [<R $pL>]> $crate::Pipe<'r, 'env, T> for ($pF, $($pN),+, $pL)]
+                [$pF: $crate::Pipe<'r, 'env, T, Output = [<R $pF>]>,]
                 ($pF, $($pN),+, $pL)
                 [{
                     type Output = [<R $pL>];
@@ -189,7 +188,7 @@ macro_rules! generate_pipe_ntup_impl {
     (@gen_item [$($pre_clause:tt)+] [$($buffer:tt)+] ($pL:ident, $pC:ident $(, $pN:ident)*) [$($post_clause:tt)+]) => (::paste::paste! {
         generate_pipe_ntup_impl!(@gen_item
             [$($pre_clause)+]
-            [$($buffer)+ $pC: $crate::Pipe<[<R $pL>], Output = [<R $pC>]>,]
+            [$($buffer)+ $pC: $crate::Pipe<'r, 'env, [<R $pL>], Output = [<R $pC>]>,]
             ($pC $(, $pN)*)
             [$($post_clause)+]
         );
@@ -201,10 +200,10 @@ macro_rules! generate_pipe_ntup_impl {
     };
 }
 
-impl<T, P1, P2, RP1, RP2> Pipe<T> for (P1, P2)
+impl<'r, 'env, T, P1, P2, RP1, RP2> Pipe<'r, 'env, T> for (P1, P2)
 where
-    P1: Pipe<T, Output = RP1>,
-    P2: Pipe<RP1, Output = RP2>,
+    P1: Pipe<'r, 'env, T, Output = RP1>,
+    P2: Pipe<'r, 'env, RP1, Output = RP2>,
 {
     type Output = RP2;
 
@@ -261,7 +260,7 @@ mod tests {
     fn custom_pipe_implementation() {
         struct Subtractor<const N: i32>;
 
-        impl<const N: i32> Pipe<i32> for Subtractor<N> {
+        impl<const N: i32> Pipe<'_, '_, i32> for Subtractor<N> {
             type Output = i32;
 
             fn complete(self, value: i32) -> Self::Output {

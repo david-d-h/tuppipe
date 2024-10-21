@@ -14,7 +14,7 @@ impl<F, S> InferSelf<F, S> for Infer<F, S> {}
 
 /// A macro used to generate pipes that do partial application.
 pub macro on {
-    (($($pre:expr,)* _, $($post:expr),*) -> $method:expr) => ($crate::paste!({
+    (($($pre:expr,)* _ $(, $post:expr)* $(,)?) -> $method:expr) => ($crate::paste!({
         #[allow(non_camel_case_types)]
         struct __on_auto_generated_partial_application<S, F, $([<APre${index()}${ignore($pre)}>],)* I, $([<APost${index()}${ignore($post)}>],)* R>
         where

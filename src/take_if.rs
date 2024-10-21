@@ -1,11 +1,11 @@
-use std::marker::PhantomData;
+use std::{borrow::Borrow, marker::PhantomData};
 
 use crate::Pipe;
 
 #[inline]
-pub const fn take_if<'value, P, T>(pipe: P) -> TakeIf<'value, P, T>
+pub const fn take_if<'env, P, T>(pipe: P) -> TakeIf<'env, P, T>
 where
-    P: Pipe<&'value T, Output = bool>,
+    P: for<'r> Pipe<'r, 'env, &'r T, Output = bool>,
 {
     TakeIf {
         _t: PhantomData,
@@ -13,46 +13,33 @@ where
     }
 }
 
-pub struct TakeIf<'value, P, T>
+pub struct TakeIf<'env, P, T>
 where
-    P: Pipe<&'value T, Output = bool>,
+    P: for<'r> Pipe<'r, 'env, &'r T, Output = bool>,
 {
-    _t: PhantomData<&'value T>,
+    _t: PhantomData<for<'r> fn(&'r T) -> &'r &'env ()>,
     pipe: P,
 }
 
-impl<'value, P, T> Pipe<&'value T> for TakeIf<'value, P, T>
+impl<'r2, 'env, P, T> Pipe<'r2, 'env, T> for TakeIf<'env, P, T>
 where
-    P: for<'local> Pipe<&'local T, Output = bool>,
-{
-    type Output = Option<&'value T>;
-
-    #[inline]
-    fn complete(self, value: &'value T) -> Self::Output {
-        self.pipe.complete(value).then_some(value)
-    }
-}
-
-impl<'value, P, T> Pipe<&'value mut T> for TakeIf<'value, P, T>
-where
-    P: for<'local> Pipe<&'local T, Output = bool>,
-{
-    type Output = Option<&'value mut T>;
-
-    #[inline]
-    fn complete(self, value: &'value mut T) -> Self::Output {
-        self.pipe.complete(value).then_some(value)
-    }
-}
-
-impl<P, T> Pipe<T> for TakeIf<'_, P, T>
-where
-    P: for<'local> Pipe<&'local T, Output = bool>,
+    P: for<'r> Pipe<'r, 'env, &'r T, Output = bool>,
+    T: Borrow<T>,
 {
     type Output = Option<T>;
 
     #[inline]
     fn complete(self, value: T) -> Self::Output {
-        self.pipe.complete(&value).then_some(value)
+        self.pipe.complete(value.borrow()).then_some(value)
     }
+}
+
+#[test]
+#[cfg(test)]
+fn it_works() {
+    use crate::prelude::*;
+
+    let it = take_if((void::<_, fn(&_)>, |_x| false)).complete(());
+
+    assert_eq!(it, None);
 }

@@ -1,11 +1,14 @@
-use std::marker::PhantomData;
+use std::{
+    borrow::{Borrow, BorrowMut},
+    marker::PhantomData,
+};
 
-use crate::Pipe;
+use crate::{MarkerFnPipe, Pipe};
 
 #[inline]
-pub const fn also<'value, P, T>(pipe: P) -> Also<'value, P, T>
+pub const fn also<'env, P, T>(pipe: P) -> Also<'env, P, T>
 where
-    P: Pipe<&'value T, Output = ()>,
+    P: for<'r> Pipe<'r, 'env, &'r T, Output = ()>,
 {
     Also {
         _t: PhantomData,
@@ -14,9 +17,9 @@ where
 }
 
 #[inline]
-pub fn also_mut<'value, P, T>(pipe: P) -> AlsoMut<'value, P, T>
+pub fn also_mut<'env, P, T>(pipe: P) -> AlsoMut<'env, P, T>
 where
-    P: Pipe<&'value mut T, Output = ()>,
+    P: for<'r> Pipe<'r, 'env, &'r mut T, Output = ()>,
 {
     AlsoMut {
         _t: PhantomData,
@@ -24,83 +27,63 @@ where
     }
 }
 
-pub struct Also<'value, P, T>
+pub struct Also<'env, P, T>
 where
-    P: Pipe<&'value T, Output = ()>,
+    P: for<'r> Pipe<'r, 'env, &'r T, Output = ()>,
 {
-    _t: PhantomData<&'value T>,
+    _t: PhantomData<for<'r> fn(&'r mut T) -> &'r &'env ()>,
     pipe: P,
 }
 
-impl<'value, P, T> Pipe<&'value T> for Also<'value, P, T>
+impl<'r2, 'env, P, T> Pipe<'r2, 'env, T> for Also<'env, P, T>
 where
-    P: for<'local> Pipe<&'local T, Output = ()>,
-{
-    type Output = &'value T;
-
-    #[inline]
-    fn complete(self, value: &'value T) -> Self::Output {
-        self.pipe.complete(value);
-        value
-    }
-}
-
-impl<'value, P, T> Pipe<&'value mut T> for Also<'value, P, T>
-where
-    P: for<'local> Pipe<&'local T, Output = ()>,
-{
-    type Output = &'value mut T;
-
-    #[inline]
-    fn complete(self, value: &'value mut T) -> Self::Output {
-        self.pipe.complete(value);
-        value
-    }
-}
-
-impl<P, T> Pipe<T> for Also<'_, P, T>
-where
-    P: for<'local> Pipe<&'local T, Output = ()>,
+    P: for<'r> Pipe<'r, 'env, &'r T, Output = ()>,
+    T: Borrow<T>,
 {
     type Output = T;
 
     #[inline]
     fn complete(self, value: T) -> Self::Output {
-        self.pipe.complete(&value);
+        let ref_ = <T as Borrow<T>>::borrow(&value);
+        self.pipe.complete(ref_);
         value
     }
 }
 
-pub struct AlsoMut<'value, P, T>
+pub struct AlsoMut<'env, P, T>
 where
-    P: Pipe<&'value mut T, Output = ()>,
+    P: for<'r> Pipe<'r, 'env, &'r mut T, Output = ()>,
 {
-    _t: PhantomData<&'value mut T>,
+    _t: PhantomData<for<'r> fn(&'r mut T) -> &'r &'env ()>,
     pipe: P,
 }
 
-impl<'value, P, T> Pipe<&'value mut T> for AlsoMut<'value, P, T>
+impl<'r2, 'env, P, T> Pipe<'r2, 'env, T> for AlsoMut<'env, P, T>
 where
-    P: for<'local> Pipe<&'local mut T, Output = ()>,
+    P: for<'r> Pipe<'r, 'env, &'r mut T, Output = ()>,
+    T: BorrowMut<T>,
 {
-    type Output = &'value mut T;
+    type Output = T;
 
-    #[inline]
-    fn complete(self, value: &'value mut T) -> Self::Output {
-        self.pipe.complete(value);
+    fn complete(self, mut value: T) -> Self::Output {
+        let ref_ = <T as BorrowMut<T>>::borrow_mut(&mut value);
+        self.pipe.complete(ref_);
         value
     }
 }
 
-impl<P, T> Pipe<T> for AlsoMut<'_, P, T>
-where
-    P: for<'local> Pipe<&'local mut T, Output = ()>,
-{
-    type Output = T;
+#[cfg(feature = "fn-pipes")]
+impl<P, T> !MarkerFnPipe for Also<'_, P, T> {}
 
-    #[inline]
-    fn complete(self, mut value: T) -> Self::Output {
-        self.pipe.complete(&mut value);
-        value
-    }
+#[cfg(feature = "fn-pipes")]
+impl<P, T> !MarkerFnPipe for AlsoMut<'_, P, T> {}
+
+#[test]
+#[cfg(test)]
+fn test() {
+    use crate::prelude::*;
+
+    let one = also_mut((void::<_, fn(&mut _)>, |_it| ())).complete(1i32);
+
+    assert_eq!(one, 1);
 }

@@ -1,3 +1,5 @@
+use std::marker::PhantomData;
+
 use crate::{MarkerFnPipe, Pipe};
 
 use ghost::phantom;
@@ -6,52 +8,87 @@ mod private {
     pub trait Sealed<T, R> {}
 }
 
-impl<P: Pipe<T, Output = R>, T, R> private::Sealed<T, R> for P {}
+impl<'r, 'env: 'r, P: Pipe<'r, 'env, T, Output = R>, T, R> private::Sealed<T, R> for P {}
 
-pub trait Voidable<T, R>: private::Sealed<T, R> + Pipe<T, Output = R> + Sized {
+pub trait Voidable<'env, T, R>:
+    private::Sealed<T, R> + for<'r> Pipe<'r, 'env, T, Output = R> + Sized
+{
     #[inline]
-    fn void(self) -> VoidInner<Self, T, R> {
-        VoidInner(self, core::marker::PhantomData)
+    fn void(self) -> VoidInner<'env, Self, T, R> {
+        VoidInner {
+            _t: PhantomData,
+            pipe: self,
+        }
     }
 }
 
-impl<P: Pipe<T, Output = R>, T, R> Voidable<T, R> for P {}
+impl<'env, P, T, R> Voidable<'env, T, R> for P where P: for<'r> Pipe<'r, 'env, T, Output = R> {}
 
-pub struct VoidInner<P: Pipe<T, Output = R>, T, R>(P, core::marker::PhantomData<(T, R)>);
+pub struct VoidInner<'env, P, T, R>
+where
+    P: for<'r> Pipe<'r, 'env, T, Output = R>,
+{
+    _t: PhantomData<for<'r> fn(&'r mut T) -> &'r &'env ()>,
+    pipe: P,
+}
 
 #[phantom]
 #[allow(non_camel_case_types)]
-pub struct void<T, R = ()>;
+pub struct void<'env, T, Mode = fn(T)>;
 
 #[cfg(feature = "fn-pipes")]
-impl<T, R> !MarkerFnPipe for void<T, R> {}
+impl<T, Mode> !MarkerFnPipe for void<'_, T, Mode> {}
 
-impl<T> Pipe<T> for void<T, ()> {
+impl<'r, 'env, T> Pipe<'r, 'env, &'r T> for void<'env, T, fn(&T)> {
+    type Output = ();
+
+    #[inline]
+    fn complete(self, _value: &'r T) -> Self::Output {}
+}
+
+impl<'r, 'env, T> Pipe<'r, 'env, &'r mut T> for void<'env, T, fn(&mut T)> {
+    type Output = ();
+
+    #[inline]
+    fn complete(self, _value: &'r mut T) -> Self::Output {}
+}
+
+impl<'r, 'env, T> Pipe<'r, 'env, T> for void<'env, T, fn(T)> {
     type Output = ();
 
     #[inline]
     fn complete(self, _value: T) -> Self::Output {}
 }
 
-impl<P: Pipe<T, Output = R>, T, R> FnOnce<(P,)> for void<T, R> {
-    type Output = VoidInner<P, T, R>;
+impl<'env, P, T, R, Mode> FnOnce<(P,)> for void<'env, T, Mode>
+where
+    P: for<'r> Pipe<'r, 'env, T, Output = R>,
+{
+    type Output = VoidInner<'env, P, T, R>;
 
     #[inline]
     extern "rust-call" fn call_once(self, args: (P,)) -> Self::Output {
-        VoidInner(args.0, core::marker::PhantomData)
+        VoidInner {
+            _t: PhantomData,
+            pipe: args.0,
+        }
     }
 }
 
-impl<P: Pipe<T, Output = R>, T, R> Pipe<T> for VoidInner<P, T, R> {
+impl<'r2, 'env, P, T, R> Pipe<'r2, 'env, T> for VoidInner<'env, P, T, R>
+where
+    P: for<'r> Pipe<'r, 'env, T, Output = R>,
+{
     type Output = ();
 
     #[inline]
     fn complete(self, value: T) -> Self::Output {
-        self.0.complete(value);
+        _ = self.pipe.complete(value);
     }
 }
 
 #[test]
+#[cfg(test)]
 fn it_works() {
-    let _it: () = crate::pipe(1) >> void(void).void();
+    let _it: () = crate::pipe(1) >> void::<_, fn(i32)>((void, void)).void();
 }
